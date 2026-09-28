@@ -1,0 +1,203 @@
+{
+  "dashboard": {
+    "title": "NIDS Overview",
+    "uid": "nids-overview",
+    "tags": ["nids", "security", "suricata", "network"],
+    "timezone": "utc",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Alert Rate (per minute)",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "rate(nids_alerts_total[1m])",
+            "legendFormat": "{{severity}}"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "yaxis": {
+          "format": "short",
+          "label": "Alerts/min"
+        },
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8}
+      },
+      {
+        "id": 2,
+        "title": "Total Alerts by Severity",
+        "type": "stat",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "sum(nids_alerts_total) by (severity)",
+            "legendFormat": "{{severity}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 10},
+                {"color": "orange", "value": 50},
+                {"color": "red", "value": 100}
+              ]
+            }
+          }
+        },
+        "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4}
+      },
+      {
+        "id": 3,
+        "title": "Top 10 Source IPs",
+        "type": "table",
+        "datasource": "Elasticsearch",
+        "targets": [
+          {
+            "query": "source.ip: *",
+            "size": 10,
+            "sort": [{"_count": "desc"}],
+            "aggs": [
+              {"field": "source.ip", "type": "terms", "size": 10}
+            ]
+          }
+        ],
+        "gridPos": {"x": 18, "y": 0, "w": 6, "h": 8}
+      },
+      {
+        "id": 4,
+        "title": "Alert Timeline (Last 24h)",
+        "type": "graph",
+        "datasource": "Elasticsearch",
+        "targets": [
+          {
+            "query": "@timestamp:[now-24h TO now] AND event_type:alert",
+            "metrics": [
+              {"field": "_count", "type": "count"}
+            ],
+            "bucketAggs": [
+              {"field": "@timestamp", "interval": "1h", "type": "date_histogram"}
+            ]
+          }
+        ],
+        "xaxis": {"mode": "time"},
+        "yaxis": {"format": "short", "label": "Alerts"},
+        "gridPos": {"x": 0, "y": 8, "w": 24, "h": 8}
+      },
+      {
+        "id": 5,
+        "title": "Top Attack Types",
+        "type": "piechart",
+        "datasource": "Elasticsearch",
+        "targets": [
+          {
+            "query": "event_type:alert",
+            "size": 0,
+            "aggs": [
+              {"field": "alert.signature", "type": "terms", "size": 10}
+            ]
+          }
+        ],
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8}
+      },
+      {
+        "id": 6,
+        "title": "Top Destination Ports",
+        "type": "table",
+        "datasource": "Elasticsearch",
+        "targets": [
+          {
+            "query": "event_type:alert",
+            "size": 0,
+            "aggs": [
+              {"field": "dest_port", "type": "terms", "size": 15}
+            ]
+          }
+        ],
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8}
+      },
+      {
+        "id": 7,
+        "title": "Protocol Distribution",
+        "type": "piechart",
+        "datasource": "Elasticsearch",
+        "targets": [
+          {
+            "query": "event_type:alert",
+            "size": 0,
+            "aggs": [
+              {"field": "proto", "type": "terms", "size": 10}
+            ]
+          }
+        ],
+        "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8}
+      },
+      {
+        "id": 8,
+        "title": "GeoIP - Attacker Countries",
+        "type": "table",
+        "datasource": "Elasticsearch",
+        "targets": [
+          {
+            "query": "event_type:alert AND geoip.country_name:*",
+            "size": 0,
+            "aggs": [
+              {"field": "geoip.country_name", "type": "terms", "size": 20}
+            ]
+          }
+        ],
+        "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8}
+      },
+      {
+        "id": 9,
+        "title": "Network Traffic Volume",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "rate(node_network_receive_bytes_total[5m])",
+            "legendFormat": "RX {{device}}"
+          },
+          {
+            "expr": "rate(node_network_transmit_bytes_total[5m])",
+            "legendFormat": "TX {{device}}"
+          }
+        ],
+        "xaxis": {"mode": "time"},
+        "yaxis": {"format": "bytes", "label": "Bytes/sec"},
+        "gridPos": {"x": 0, "y": 32, "w": 12, "h": 8}
+      },
+      {
+        "id": 10,
+        "title": "System Resources",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "(1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) by (instance)) * 100",
+            "legendFormat": "CPU % {{instance}}"
+          },
+          {
+            "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
+            "legendFormat": "Memory % {{instance}}"
+          }
+        ],
+        "xaxis": {"mode": "time"},
+        "yaxis": {"format": "percent", "label": "Usage %"},
+        "gridPos": {"x": 12, "y": 32, "w": 12, "h": 8}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s",
+    "version": 1
+  },
+  "overwrite": true
+}

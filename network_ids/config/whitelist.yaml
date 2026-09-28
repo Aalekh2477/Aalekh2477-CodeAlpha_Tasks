@@ -1,0 +1,176 @@
+# NIDS Whitelist Configuration
+# ============================================================
+# IPs, networks, domains, and rules to exclude from alerting
+# Use with caution - only whitelist known legitimate traffic
+# ============================================================
+
+# IP Addresses to whitelist (exact match)
+ips:
+  # Management & Monitoring
+  - "10.0.10.13"      # Monitoring server
+  - "10.0.10.14"      # Log collector
+  - "10.0.10.15"      # SIEM collector
+
+  # Backup & Infrastructure
+  - "192.168.1.50"    # Backup server
+  - "192.168.1.51"    # DR replication target
+
+  # Approved Scanners
+  - "10.0.10.20"      # Nessus scanner
+  - "10.0.10.21"      # Qualys scanner
+  - "10.0.10.22"      # Internal pen-test box
+
+  # Cloud Provider IPs (if using cloud monitoring)
+  # - "52.0.0.0/8"    # AWS
+  # - "130.211.0.0/22"  # Google Cloud
+
+# Network ranges to whitelist (CIDR notation)
+networks:
+  # Internal management network
+  - "10.0.10.0/24"
+
+  # Backup network
+  - "192.168.50.0/24"
+
+  # Trusted partner networks (if applicable)
+  # - "203.0.113.0/24"  # Partner VPN
+
+# Domain names to whitelist (DNS queries)
+domains:
+  # Internal domains
+  - "internal.company.com"
+  - "corp.company.com"
+  - "ad.company.com"
+  - "dns.company.com"
+
+  # Approved external services
+  - "windowsupdate.microsoft.com"
+  - "update.adobe.com"
+  - "repo.ubuntu.com"
+  - "packages.microsoft.com"
+  - "dl.google.com"
+  - "download.docker.com"
+  - "registry.npmjs.org"
+  - "pypi.org"
+  - "rubygems.org"
+  - "maven.org"
+
+  # Certificate authorities
+  - "letsencrypt.org"
+  - "digicert.com"
+  - "globalsign.com"
+  - "sectigo.com"
+
+  # Time synchronization
+  - "pool.ntp.org"
+  - "time.google.com"
+  - "time.cloudflare.com"
+  - "time.windows.com"
+
+  # Security vendor updates
+  - "updates.symantec.com"
+  - "definitions.symantec.com"
+  - "updates.mcafee.com"
+  - "download.mcafee.com"
+  - "clamav.net"
+  - "database.clamav.net"
+
+# Rule IDs to suppress completely (use with extreme caution)
+rules:
+  # Suppress noisy rules in specific environments
+  # - "2000001"  # Example: ET SCAN Potential SSH Scan
+  # - "2000002"  # Example: ET SCAN Nmap Scan
+
+  # Only add rule IDs here if you fully understand the impact
+  # Each suppressed rule is a blind spot in your detection
+
+# Application/user agents to whitelist
+user_agents:
+  # Legitimate scanners/crawlers
+  - "Googlebot"
+  - "Bingbot"
+  - "Slurp"
+  - "DuckDuckBot"
+  - "Baiduspider"
+  - "YandexBot"
+  - "facebookexternalhit"
+  - "Twitterbot"
+  - "LinkedInBot"
+  - "Applebot"
+
+  # Monitoring tools
+  - "Prometheus"
+  - "Grafana"
+  - "Datadog"
+  - "NewRelic"
+  - "Datadog Agent"
+  - "Telegraf"
+  - "Collectd"
+
+  # Legitimate business tools
+  - "PostmanRuntime"
+  - "Insomnia"
+  - "Paw"
+  - "curl"
+  - "Wget"
+  - "python-requests"
+  - "Go-http-client"
+  - "Java"
+  - "Apache-HttpClient"
+
+# File hashes to whitelist (SHA256)
+file_hashes:
+  # Known good executables
+  # - "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+# Email addresses/senders to whitelist
+email_senders:
+  - "noreply@company.com"
+  - "alerts@github.com"
+  - "security@github.com"
+  - "no-reply@aws.amazon.com"
+  - "noreply@microsoft.com"
+
+# Specific alert combinations to whitelist (IP + Rule combinations)
+alert_combinations:
+  # Allow vulnerability scanner to trigger scan rules
+  - src_ip: "10.0.10.20"
+    rule_ids: [1000301, 1000302, 1000303, 1000304, 1000305, 1000306, 1000307]
+    reason: "Authorized vulnerability scanner"
+
+  # Allow backup server to transfer large files
+  - src_ip: "192.168.1.50"
+    rule_ids: [1000501]
+    reason: "Backup server large transfers"
+
+# Time-based whitelists (Cron-style schedules)
+time_based:
+  - name: "Nightly Backup Window"
+    schedule: "0 2 * * *"  # Daily at 2 AM
+    duration: 7200  # 2 hours
+    rule_ids: [1000501, 1000503]  # Large transfer, FTP exfil
+    reason: "Scheduled backup operations"
+
+  - name: "Weekly Vulnerability Scan"
+    schedule: "0 3 * * 0"  # Sunday 3 AM
+    duration: 14400  # 4 hours
+    rule_ids: [1000301, 1000302, 1000303, 1000304, 1000305, 1000306, 1000307]
+    src_ips: ["10.0.10.20", "10.0.10.21"]
+    reason: "Weekly authorized vulnerability scan"
+
+  - name: "Patch Tuesday Window"
+    schedule: "0 2 * * 2#2"  # Second Tuesday of month at 2 AM
+    duration: 14400  # 4 hours
+    rule_ids: [1000401, 1000402, 1000403, 1000404, 1000405]
+    reason: "Patch deployment window may trigger exploit rules"
+
+# Notes on Whitelist Management
+# =============================
+# 1. Review whitelists monthly
+# 2. Remove entries that are no longer needed
+# 3. Document reason for each whitelist entry
+# 3. Test that whitelisted traffic still generates appropriate logs
+# 4. Never whitelist based on source port alone
+# 5. Prefer specific IPs over broad networks
+# 6. Prefer rule-specific whitelists over blanket rule suppression
+# 7. Audit whitelist changes in change management system

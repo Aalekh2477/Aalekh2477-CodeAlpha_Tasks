@@ -1,0 +1,203 @@
+# Filebeat Configuration for NIDS
+# ============================================================
+# Ship Suricata, Snort, and Alert Manager logs to Logstash
+# ============================================================
+
+filebeat.inputs:
+  # Suricata EVE JSON logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/suricata/eve.json
+    fields:
+      source: suricata
+      log_type: eve
+    fields_under_root: true
+    json:
+      keys_under_root: true
+      overwrite_keys: true
+      add_error_key: true
+    ignore_older: 24h
+    close_inactive: 5m
+    close_removed: true
+    clean_inactive: 24h
+
+  # Suricata stats logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/suricata/stats.log
+    fields:
+      source: suricata
+      log_type: stats
+    fields_under_root: true
+    tags: ["suricata", "stats"]
+
+  # Suricata fast alert logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/suricata/fast.log
+    fields:
+      source: suricata
+      log_type: fast
+    fields_under_root: true
+    tags: ["suricata", "fast"]
+
+  # Suricata HTTP logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/suricata/http.log
+    fields:
+      source: suricata
+      log_type: http
+    fields_under_root: true
+    tags: ["suricata", "http"]
+
+  # Suricata DNS logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/suricata/dns.log
+    fields:
+      source: suricata
+      log_type: dns
+    fields_under_root: true
+    tags: ["suricata", "dns"]
+
+  # Suricata TLS logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/suricata/tls.log
+    fields:
+      source: suricata
+      log_type: tls
+    fields_under_root: true
+    tags: ["suricata", "tls"]
+
+  # Snort alert logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/snort/alert
+    fields:
+      source: snort
+      log_type: alert
+    fields_under_root: true
+    tags: ["snort", "alert"]
+    multiline.pattern: '^\[\*\*\]'
+    multiline.negate: true
+    multiline.match: after
+
+  # Alert Manager logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nids/alert_manager.log
+    fields:
+      source: alert_manager
+      log_type: alert_manager
+    fields_under_root: true
+    tags: ["alert_manager"]
+
+  # Responder logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nids/block_ip.log
+      - /var/log/nids/quarantine.log
+      - /var/log/nids/notify_slack.log
+      - /var/log/nids/notify_email.log
+      - /var/log/nids/notify_webhook.log
+    fields:
+      source: responder
+      log_type: responder
+    fields_under_root: true
+    tags: ["responder"]
+
+# Processors
+processors:
+  # Add host metadata
+  - add_host_metadata:
+      netinfo.enabled: true
+      geo.enabled: false
+
+  # Add Docker metadata (if running in container)
+  - add_docker_metadata:
+      host: "unix:///var/run/docker.sock"
+      match_fields: ["container.id"]
+      match_pids: ["process.pid"]
+
+  # Add Kubernetes metadata (if running in K8s)
+  - add_kubernetes_metadata:
+      host: ${NODE_NAME}
+      matchers:
+        - logs_path:
+            logs_path: "/var/log/containers/"
+
+  # Drop debug logs
+  - drop_event:
+      when:
+        regexp:
+          level: "debug"
+
+  # Add severity based on tags
+  - add_fields:
+      target: ""
+      fields:
+        environment: "production"
+        sensor_type: "nids"
+    when:
+      not:
+        equals:
+          source: "test"
+
+# Output to Logstash
+output.logstash:
+  hosts: ["logstash:5044"]
+  loadbalance: true
+  pipelining: 0
+  worker: 2
+  compression_level: 3
+  bulk_max_size: 2048
+  timeout: 30
+  backoff: 1s
+  backoff.max: 60s
+
+  # SSL Configuration (if using SSL)
+  # ssl.enabled: true
+  # ssl.certificate_authorities: ["/etc/filebeat/ca.crt"]
+  # ssl.certificate: "/etc/filebeat/client.crt"
+  # ssl.key: "/etc/filebeat/client.key"
+  # ssl.verification_mode: "full"
+
+# Logging
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644
+
+# Monitoring
+monitoring.enabled: true
+monitoring.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+
+# HTTP endpoint for health checks
+http.enabled: true
+http.host: 0.0.0.0
+http.port: 5066
+
+# Queue settings
+queue.mem:
+  events: 4096
+  flush.min_events: 512
+  flush.timeout: 5s
+
+# Retry settings
+retry_limit: 10
+retry_timeout: 60s

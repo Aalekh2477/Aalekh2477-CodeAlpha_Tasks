@@ -1,0 +1,359 @@
+# Alert Manager Configuration
+# ============================================================
+# Central configuration for alert processing and routing
+# ============================================================
+
+# General settings
+general:
+  # Deduplication window in seconds
+  dedup_window: 300
+
+  # Alert processor threads
+  worker_threads: 4
+
+  # Queue size for alert processing
+  queue_size: 10000
+
+  # Stats reporting interval (seconds)
+  stats_interval: 60
+
+  # Enable debug logging
+  debug: false
+
+# Log file paths
+log_paths:
+  suricata_eve: "/var/log/suricata/eve.json"
+  snort_fast: "/var/log/snort/alert"
+  snort_unified2: "/var/log/snort/alert.unified2"
+  alert_log: "/var/log/nids/alerts.log"
+  stats_log: "/var/log/nids/stats.log"
+
+# Whitelist file
+whitelist_file: "/app/whitelist.yaml"
+
+# Thresholds file
+thresholds_file: "/app/thresholds.yaml"
+
+# Alert routing rules
+routing:
+  # Route alerts to different handlers based on criteria
+  routes:
+    - name: "critical_alerts"
+      match:
+        severity: ["critical"]
+      handlers: ["slack", "email", "webhook", "pagerduty", "auto_block", "auto_quarantine"]
+      continue: false  # Stop processing after this route
+
+    - name: "high_alerts"
+      match:
+        severity: ["high"]
+      handlers: ["slack", "email", "webhook", "auto_block"]
+      continue: false
+
+    - name: "medium_alerts"
+      match:
+        severity: ["medium"]
+      handlers: ["slack", "email", "webhook"]
+      continue: false
+
+    - name: "low_alerts"
+      match:
+        severity: ["low", "info"]
+      handlers: ["slack"]
+      continue: true
+
+    - name: "malware_c2"
+      match:
+        rule_ids: [1000201, 1000202, 1000203]
+      handlers: ["slack", "email", "webhook", "auto_quarantine"]
+      continue: false
+
+    - name: "exploit_attempts"
+      match:
+        rule_ids: [1000401, 1000402, 1000403, 1000404, 1000405]
+      handlers: ["slack", "email", "webhook", "auto_block", "auto_quarantine"]
+      continue: false
+
+    - name: "data_exfiltration"
+      match:
+        rule_ids: [1000501, 1000502, 1000503]
+      handlers: ["slack", "email", "webhook", "auto_quarantine"]
+      continue: false
+
+    - name: "reconnaissance"
+      match:
+        categories: ["attempted-recon"]
+      handlers: ["slack", "email"]
+      continue: true
+
+    - name: "policy_violations"
+      match:
+        categories: ["policy-violation"]
+      handlers: ["slack", "email"]
+      continue: true
+
+    - name: "default"
+      match: {}  # Catch-all
+      handlers: ["slack", "log"]
+      continue: false
+
+# Handler configurations
+handlers:
+  # Log all alerts
+  log:
+    type: "file"
+    file: "/var/log/nids/alerts.log"
+    format: "json"
+    rotation:
+      max_size: "100MB"
+      max_files: 30
+
+  # Slack notifications
+  slack:
+    type: "slack"
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+    channel: "#security-alerts"
+    username: "NIDS Alert Bot"
+    icon_emoji: ":shield:"
+    timeout: 10
+    retry_attempts: 3
+    retry_delay: 5
+    # Only send for these severities
+    severity_threshold: "medium"
+    # Mention oncall for critical/high
+    mention_oncall:
+      critical: true
+      high: true
+      medium: false
+
+  # Email notifications
+  email:
+    enabled: true
+    smtp_server: "${SMTP_SERVER}"
+    smtp_port: 587
+    username: "${SMTP_USERNAME}"
+    password: "${SMTP_PASSWORD}"
+    from_email: "nids@company.com"
+    from_name: "NIDS Alert System"
+    recipients:
+      - "security@company.com"
+      - "oncall@company.com"
+    # Use digest mode for multiple alerts
+    digest_mode: true
+    digest_interval: 300  # seconds
+    max_alerts_per_digest: 20
+    # Only send for these severities
+    severity_threshold: "medium"
+    use_tls: true
+
+  # Webhook notifications
+  webhook:
+    enabled: true
+    url: "https://soc.company.com/api/alerts"
+    method: "POST"
+    headers:
+      Authorization: "Bearer ${WEBHOOK_TOKEN}"
+      Content-Type: "application/json"
+    timeout: 10
+    retry_attempts: 3
+    retry_delay: 5
+    # Sign payload with HMAC
+    sign_payload: true
+    secret: "${WEBHOOK_SECRET}"
+    severity_threshold: "low"
+
+  # PagerDuty integration
+  pagerduty:
+    enabled: false
+    integration_key: "${PAGERDUTY_INTEGRATION_KEY}"
+    severity_threshold: "critical"
+
+  # Auto-blocking responder
+  auto_block:
+    enabled: true
+    responder: "block_ip"
+    timeout: 30
+    # Only block for these rules
+    rule_ids:
+      - 1000001  # SQL Injection Union
+      - 1000002  # SQL Injection Error Based
+      - 1000003  # SQL Injection Time Based
+      - 1000004  # SQL Injection Boolean
+      - 1000005  # Command Injection
+      - 1000006  # Path Traversal
+      - 1000011  # XXE Injection
+      - 1000012  # SSRF
+      - 1000401  # Log4Shell
+      - 1000402  # Spring4Shell
+      - 1000403  # ProxyLogon
+      - 1000404  # EternalBlue
+      - 1000405  # BlueKeep
+    # Default block duration (seconds)
+    default_duration: 3600
+    # Max block duration (seconds)
+    max_duration: 86400
+    # Whitelist check before blocking
+    check_whitelist: true
+
+  # Auto-quarantine responder
+  auto_quarantine:
+    enabled: true
+    responder: "quarantine_host"
+    timeout: 60
+    # Quarantine for these rules
+    rule_ids:
+      - 1000201  # C2 HTTP Beaconing
+      - 1000202  # DNS Tunneling
+      - 1000203  # Suspicious User Agent
+      - 1000501  # Large HTTP POST
+      - 1000502  # DNS Exfiltration
+      - 1000503  # FTP Exfiltration
+    default_duration: 86400
+    quarantine_method: "vlan"  # vlan, nac, cisco_ise, forescout, port_shutdown
+    quarantine_vlan: 999
+
+  # Rate limiting responder
+  rate_limit:
+    enabled: true
+    responder: "rate_limit"
+    rule_ids:
+      - 1000301  # SYN Scan
+      - 1000302  # FIN Scan
+      - 1000303  # NULL Scan
+      - 1000304  # XMAS Scan
+      - 1000305  # UDP Scan
+    default_duration: 3600
+    limit: 100
+    window: 60
+
+# Alert enrichment
+enrichment:
+  # Enable GeoIP enrichment
+  geoip:
+    enabled: true
+    database: "/etc/suricata/GeoLite2-City.mmdb"
+    fields: ["country", "city", "asn", "org"]
+
+  # Threat intelligence enrichment
+  threat_intel:
+    enabled: true
+    # Abuse.ch Feodo Tracker
+    feodo:
+      enabled: true
+      url: "https://feodotracker.abuse.ch/downloads/ipblocklist.json"
+      refresh_interval: 3600
+    # Abuse.ch SSLBL
+    sslbl:
+      enabled: true
+      url: "https://sslbl.abuse.ch/blacklist/sslblacklist.csv"
+      refresh_interval: 3600
+    # AlienVault OTX
+    otx:
+      enabled: false
+      api_key: "${OTX_API_KEY}"
+      refresh_interval: 3600
+
+  # DNS reputation
+  dns_reputation:
+    enabled: true
+    providers:
+      - "spamhaus.org"
+      - "spamcop.net"
+
+  # WHOIS enrichment
+  whois:
+    enabled: false
+    rate_limit: 10  # queries per second
+
+# Alert suppression
+suppression:
+  # Suppress alerts during maintenance windows
+  maintenance_windows:
+    - name: "Weekly Maintenance"
+      schedule: "0 2 * * 0"  # Sunday 2 AM
+      duration: 14400  # 4 hours
+      suppress_all: false  # Only suppress low/medium
+      except_severities: ["critical", "high"]
+
+    - name: "Patch Window"
+      schedule: "0 2 * * 2#2"  # Second Tuesday
+      duration: 14400
+      suppress_all: false
+
+  # Suppress alerts from specific sources during windows
+  suppression_windows:
+    - name: "Backup Window"
+      schedule: "0 2 * * *"  # Daily 2 AM
+      duration: 7200
+      rule_ids: [1000501, 1000503]  # Large transfer, FTP exfil
+      suppress: true
+
+# Alert correlation
+correlation:
+  enabled: true
+  # Correlate alerts within time window
+  window: 300  # seconds
+  # Minimum alerts to trigger correlation
+  min_alerts: 3
+  # Correlation rules
+  rules:
+    - name: "Multi-vector Attack"
+      description: "Multiple attack types from same source"
+      condition: "count_distinct(categories) >= 3"
+      severity: "critical"
+      window: 300
+
+    - name: "Distributed Scan"
+      description: "Multiple sources scanning same target"
+      condition: "count_distinct(src_ip) >= 5 and count(dst_ip) == 1"
+      severity: "high"
+      window: 300
+
+    - name: "Credential Stuffing Campaign"
+      description: "Multiple failed logins across different users"
+      condition: "rule_id in (1000101, 1000102, 1000103) and count(src_ip) >= 10"
+      severity: "critical"
+      window: 600
+
+# Performance tuning
+performance:
+  # Batch size for processing
+  batch_size: 100
+
+  # Flush interval (seconds)
+  flush_interval: 10
+
+  # Memory limits
+  max_memory_mb: 512
+
+  # Garbage collection
+  gc_interval: 300
+
+# Health checks
+health_checks:
+  enabled: true
+  interval: 30
+  endpoints:
+    - name: "suricata"
+      check: "process"
+      process: "suricata"
+    - name: "snort"
+      check: "process"
+      process: "snort"
+    - name: "disk_space"
+      check: "disk"
+      path: "/var/log"
+      min_free_gb: 5
+    - name: "memory"
+      check: "memory"
+      max_percent: 90
+    - name: "cpu"
+      check: "cpu"
+      max_percent: 90
+
+# Metrics export
+metrics:
+  enabled: true
+  port: 9090
+  path: "/metrics"
+  prefix: "nids"

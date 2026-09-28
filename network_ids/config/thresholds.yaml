@@ -1,0 +1,429 @@
+# Alert Thresholds Configuration
+# ============================================================
+# Rate limiting and alert thresholds for NIDS
+# ============================================================
+
+# Global default thresholds
+global:
+  # Default alert deduplication window (seconds)
+  dedup_window: 300
+
+  # Maximum alerts per source IP per window
+  max_alerts_per_ip:
+    window: 300      # 5 minutes
+    count: 50
+
+  # Maximum alerts per rule per window
+  max_alerts_per_rule:
+    window: 300
+    count: 100
+
+# Per-rule thresholds (override global)
+rules:
+  # Web Application Attacks
+  "1000001":  # SQL Injection Union
+    severity: "critical"
+    threshold:
+      count: 3
+      window: 60
+    auto_response:
+      action: "block_ip"
+      duration: 3600
+
+  "1000002":  # SQL Injection Error Based
+    severity: "critical"
+    threshold:
+      count: 3
+      window: 60
+    auto_response:
+      action: "block_ip"
+      duration: 3600
+
+  "1000005":  # Command Injection
+    severity: "critical"
+    threshold:
+      count: 2
+      window: 60
+    auto_response:
+      action: "block_ip"
+      duration: 7200
+
+  "1000006":  # Path Traversal
+    severity: "high"
+    threshold:
+      count: 3
+      window: 60
+    auto_response:
+      action: "block_ip"
+      duration: 3600
+
+  "1000011":  # XXE Injection
+    severity: "critical"
+    threshold:
+      count: 1
+      window: 60
+    auto_response:
+      action: "block_ip"
+      duration: 7200
+
+  "1000012":  # SSRF
+    severity: "critical"
+    threshold:
+      count: 2
+      window: 60
+    auto_response:
+      action: "block_ip"
+      duration: 7200
+
+  # Authentication Attacks
+  "1000101":  # SSH Brute Force
+    severity: "high"
+    threshold:
+      count: 5
+      window: 300
+    auto_response:
+      action: "block_ip"
+      duration: 3600
+
+  "1000103":  # HTTP Basic Auth Brute Force
+    severity: "high"
+    threshold:
+      count: 10
+      window: 300
+    auto_response:
+      action: "block_ip"
+      duration: 3600
+
+  "1000105":  # Credential Stuffing
+    severity: "critical"
+    threshold:
+      count: 20
+      window: 300
+    auto_response:
+      action: "block_ip"
+      duration: 7200
+
+  # Malware & C2
+  "1000201":  # HTTP Beaconing
+    severity: "high"
+    threshold:
+      count: 20
+      window: 300
+    auto_response:
+      action: "quarantine_host"
+      duration: 86400
+
+  "1000202":  # DNS Tunneling
+    severity: "critical"
+    threshold:
+      count: 10
+      window: 300
+    auto_response:
+      action: "quarantine_host"
+      duration: 86400
+
+  "1000203":  # Suspicious User Agent
+    severity: "high"
+    threshold:
+      count: 3
+      window: 300
+    auto_response:
+      action: "block_ip"
+      duration: 3600
+
+  # Reconnaissance
+  "1000301":  # SYN Scan
+    severity: "medium"
+    threshold:
+      count: 50
+      window: 60
+    auto_response:
+      action: "rate_limit"
+      duration: 3600
+
+  "1000305":  # UDP Scan
+    severity: "medium"
+    threshold:
+      count: 100
+      window: 60
+
+  "1000307":  # ICMP Sweep
+    severity: "low"
+    threshold:
+      count: 20
+      window: 60
+
+  # Exploits
+  "1000401":  # Log4Shell
+    severity: "critical"
+    threshold:
+      count: 1
+      window: 3600
+    auto_response:
+      action: "block_ip"
+      duration: 86400
+
+  "1000402":  # Spring4Shell
+    severity: "critical"
+    threshold:
+      count: 1
+      window: 3600
+    auto_response:
+      action: "block_ip"
+      duration: 86400
+
+  "1000404":  # EternalBlue
+    severity: "critical"
+    threshold:
+      count: 1
+      window: 3600
+    auto_response:
+      action: "quarantine_host"
+      duration: 86400
+
+  # Data Exfiltration
+  "1000501":  # Large HTTP POST
+    severity: "high"
+    threshold:
+      count: 3
+      window: 300
+    auto_response:
+      action: "quarantine_host"
+      duration: 3600
+
+  "1000502":  # DNS Exfiltration
+    severity: "critical"
+    threshold:
+      count: 5
+      window: 300
+    auto_response:
+      action: "quarantine_host"
+      duration: 86400
+
+  # Policy Violations
+  "1000602":  # Cryptomining
+    severity: "high"
+    threshold:
+      count: 3
+      window: 300
+    auto_response:
+      action: "quarantine_host"
+      duration: 86400
+
+  "1000604":  # Unauthorized Cloud Storage
+    severity: "medium"
+    threshold:
+      count: 5
+      window: 300
+
+# Category-based thresholds
+categories:
+  web-application-attack:
+    severity: "high"
+    threshold:
+      count: 5
+      window: 300
+
+  attempted-admin:
+    severity: "high"
+    threshold:
+      count: 5
+      window: 300
+
+  trojan-activity:
+    severity: "critical"
+    threshold:
+      count: 3
+      window: 300
+
+  attempted-recon:
+    severity: "medium"
+    threshold:
+      count: 20
+      window: 300
+
+  policy-violation:
+    severity: "medium"
+    threshold:
+      count: 10
+      window: 300
+
+  attempted-user:
+    severity: "high"
+    threshold:
+      count: 10
+      window: 300
+
+  # Custom categories
+  data-exfiltration:
+    severity: "critical"
+    threshold:
+      count: 3
+      window: 300
+
+  c2-activity:
+    severity: "critical"
+    threshold:
+      count: 3
+      window: 300
+
+  exploit-attempt:
+    severity: "critical"
+    threshold:
+      count: 1
+      window: 3600
+
+# Alert routing by severity
+severity_routing:
+  critical:
+    notify: ["slack", "email", "webhook", "pagerduty"]
+    auto_block: true
+    auto_quarantine: true
+    escalation_time: 300  # seconds before escalation
+
+  high:
+    notify: ["slack", "email", "webhook"]
+    auto_block: true
+    auto_quarantine: false
+    escalation_time: 900
+
+  medium:
+    notify: ["slack", "email"]
+    auto_block: false
+    auto_quarantine: false
+    escalation_time: 3600
+
+  low:
+    notify: ["slack"]
+    auto_block: false
+    auto_quarantine: false
+
+  info:
+    notify: []
+    auto_block: false
+    auto_quarantine: false
+
+# Auto-response configuration
+responses:
+  auto_block:
+    enabled: true
+    # Block IPs that trigger these rules
+    triggers:
+      - rule_id: 1000001  # SQL Injection
+        action: "block_ip"
+        duration: 3600
+      - rule_id: 1000005  # Command Injection
+        action: "block_ip"
+        duration: 7200
+      - rule_id: 1000011  # XXE
+        action: "block_ip"
+        duration: 7200
+      - rule_id: 1000012  # SSRF
+        action: "block_ip"
+        duration: 7200
+      - rule_id: 1000401  # Log4Shell
+        action: "block_ip"
+        duration: 86400
+      - rule_id: 1000404  # EternalBlue
+        action: "quarantine_host"
+        duration: 86400
+
+  auto_quarantine:
+    enabled: true
+    triggers:
+      - rule_id: 1000201  # C2 Beaconing
+        action: "quarantine_host"
+        duration: 86400
+      - rule_id: 1000202  # DNS Tunneling
+        action: "quarantine_host"
+        duration: 86400
+      - rule_id: 1000501  # Data Exfil HTTP
+        action: "quarantine_host"
+        duration: 3600
+      - rule_id: 1000502  # DNS Exfiltration
+        action: "quarantine_host"
+        duration: 86400
+
+  rate_limit:
+    enabled: true
+    # Rate limit IPs that exceed thresholds
+    triggers:
+      - rule_id: 1000301  # Port Scan
+        action: "rate_limit"
+        duration: 3600
+        limit: 100
+        window: 60
+
+# Escalation policies
+escalation:
+  # If critical alert not acknowledged within escalation_time
+  critical:
+    time: 300  # 5 minutes
+    notify: ["oncall-primary", "security-lead"]
+    channels: ["slack", "email", "sms", "phone"]
+
+  high:
+    time: 900  # 15 minutes
+    notify: ["oncall-primary"]
+    channels: ["slack", "email"]
+
+  medium:
+    time: 3600  # 1 hour
+    notify: ["security-team"]
+    channels: ["slack"]
+
+# Notification channels configuration
+notifications:
+  slack:
+    enabled: true
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+    channel: "#security-alerts"
+    username: "NIDS Alert Bot"
+    icon_emoji: ":shield:"
+    severity_threshold: "medium"
+
+  email:
+    enabled: true
+    smtp_server: "smtp.gmail.com"
+    smtp_port: 587
+    username: "${SMTP_USERNAME}"
+    password: "${SMTP_PASSWORD}"
+    from_email: "nids@company.com"
+    recipients:
+      - "security@company.com"
+      - "oncall@company.com"
+    severity_threshold: "medium"
+
+  webhook:
+    enabled: true
+    url: "https://soc.company.com/api/alerts"
+    headers:
+      Authorization: "Bearer ${WEBHOOK_TOKEN}"
+    severity_threshold: "low"
+
+  pagerduty:
+    enabled: false
+    integration_key: "${PAGERDUTY_KEY}"
+    severity_threshold: "critical"
+
+# Maintenance windows (suppress alerts)
+maintenance_windows:
+  - name: "Weekly Patch Window"
+    day: "Sunday"
+    start: "02:00"
+    end: "06:00"
+    timezone: "UTC"
+    suppress: true
+
+  - name: "Monthly Maintenance"
+    day: "First Saturday"
+    start: "00:00"
+    end: "04:00"
+    timezone: "UTC"
+    suppress: false  # Only reduce noise, don't suppress critical
+
+# Rate limiting for notifications
+notification_rate_limit:
+  max_per_minute: 30
+  max_per_hour: 200
+  burst_allowance: 50

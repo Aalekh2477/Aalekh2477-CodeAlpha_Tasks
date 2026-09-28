@@ -1,0 +1,628 @@
+# Suricata Configuration for NIDS
+# ============================================================
+# Main configuration file for Suricata IDS/IPS
+# Optimized for high-performance network monitoring
+# ============================================================
+
+# ------------------------------------------------------------------------------
+# Global Settings
+# ------------------------------------------------------------------------------
+%YAML 1.1
+---
+vars:
+  # Network definitions - will be overridden by networks.yaml
+  address-groups:
+    HOME_NET: "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]"
+    EXTERNAL_NET: "!$HOME_NET"
+    HTTP_SERVERS: "$HOME_NET"
+    SMTP_SERVERS: "$HOME_NET"
+    SQL_SERVERS: "$HOME_NET"
+    DNS_SERVERS: "$HOME_NET"
+    TELNET_SERVERS: "$HOME_NET"
+    AIM_SERVERS: "$EXTERNAL_NET"
+    DC_SERVERS: "$HOME_NET"
+    DNP3_SERVER: "$HOME_NET"
+    DNP3_CLIENT: "$HOME_NET"
+    MODBUS_CLIENT: "$HOME_NET"
+    MODBUS_SERVER: "$HOME_NET"
+    ENIP_CLIENT: "$HOME_NET"
+    ENIP_SERVER: "$HOME_NET"
+
+  port-groups:
+    HTTP_PORTS: "80,81,311,3128,8000,8080,8081,8082,8085,8088,8090,8888,9000,9080,9090,9091,9443"
+    SHELLCODE_PORTS: "!80"
+    ORACLE_PORTS: 1521
+    SSH_PORTS: 22
+    DNP3_PORTS: 20000
+    MODBUS_PORTS: 502
+    FILE_DATA_PORTS: "[$HTTP_PORTS,110,143]"
+    FTP_PORTS: 21
+    GENEVE_PORTS: 6081
+    VXLAN_PORTS: 4789
+    TEREDO_PORTS: 3544
+
+# ------------------------------------------------------------------------------
+# Logging Configuration
+# ------------------------------------------------------------------------------
+default-log-dir: /var/log/suricata
+
+outputs:
+  # EVE JSON output - primary format for ELK/Logstash
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert:
+            payload: yes
+            payload-buffer-size: 4kb
+            payload-printable: yes
+            packet: yes
+            metadata: yes
+            tagged-packets: yes
+        - http:
+            extended: yes
+            custom: [Accept, Authorization, Cookie, Referer, User-Agent, X-Forwarded-For]
+        - dns:
+            query: yes
+            answer: yes
+            rrtype: yes
+            rdata: yes
+            ttl: yes
+        - tls:
+            extended: yes
+            cert_subject: yes
+            cert_issuer: yes
+            cert_fingerprint: sha256
+        - ssh:
+            extended: yes
+        - smtp:
+            extended: yes
+            custom: [Received, From, To, Subject, Message-ID]
+        - dnp3:
+            extended: yes
+        - modbus:
+            extended: yes
+        - enip:
+            extended: yes
+        - nfs:
+            extended: yes
+        - ikev2:
+            extended: yes
+        - quic:
+            extended: yes
+        - stats:
+            totals: yes
+            threads: yes
+            deltas: no
+        - flow:
+            enabled: yes
+            all: yes
+        - netflow:
+            enabled: no
+        - metadata:
+            enabled: no
+
+  # Unified2 for Snort compatibility
+  - unified2-alert:
+      enabled: yes
+      filename: unified2.alert
+      limit: 128
+      xff:
+        enabled: no
+
+  # Fast log for quick parsing
+  - fast:
+      enabled: yes
+      filename: fast.log
+      append: yes
+
+  # HTTP log for web traffic analysis
+  - http-log:
+      enabled: yes
+      filename: http.log
+      append: yes
+      extended: yes
+
+  # DNS log for DNS traffic analysis
+  - dns-log:
+      enabled: yes
+      filename: dns.log
+      append: yes
+
+  # TLS log for certificate analysis
+  - tls-log:
+      enabled: yes
+      filename: tls.log
+      append: yes
+
+  # SSH log for SSH analysis
+  - ssh-log:
+      enabled: yes
+      filename: ssh.log
+      append: yes
+
+  # Stats log for performance monitoring
+  - stats:
+      enabled: yes
+      filename: stats.log
+      interval: 60
+      append: yes
+      totals: yes
+      threads: yes
+      deltas: no
+
+# ------------------------------------------------------------------------------
+# Rule Configuration
+# ------------------------------------------------------------------------------
+default-rule-path: /etc/suricata/rules
+rule-files:
+  # Emerging Threats rules (auto-updated)
+  - emerging-threats/*.rules
+  # ThreatFox IOCs
+  - threatfox/*.rules
+  # Custom local rules
+  - local.rules
+  # ET Pro rules (if subscribed)
+  # - etpro/*.rules
+
+# Threshold configuration (rate limiting for alerts)
+threshold-file: /etc/suricata/thresholds.yaml
+
+# Classification configuration
+classification-file: /etc/suricata/classification.config
+
+# Reference configuration
+reference-config-file: /etc/suricata/reference.config
+
+# ------------------------------------------------------------------------------
+# Packet Processing
+# ------------------------------------------------------------------------------
+# Packet acquisition settings
+pcap-file-buffer-size: 16777216
+
+# BPF filter for traffic selection (empty = all traffic)
+bpf-filter: ""
+
+# Default packet size
+default-packet-size: 1518
+
+# Maximum pending packets
+max-pending-packets: 10000
+
+# Run as user/group
+run-as:
+  user: suricata
+  group: suricata
+
+# ------------------------------------------------------------------------------
+# Threading & Performance
+# ------------------------------------------------------------------------------
+threading:
+  # CPU affinity for maximum performance
+  set-cpu-affinity: yes
+
+  # CPU allocation (adjust based on CPU cores)
+  # Example for 16-core system:
+  cpu-affinity:
+    - management-cpu-set:
+        cpu: [0]
+    - receive-cpu-set:
+        cpu: [1, 2, 3]
+    - worker-cpu-set:
+        cpu: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    - verdict-cpu-set:
+        cpu: [16]
+
+  # Alternative for 8-core system:
+  # cpu-affinity:
+  #   - management-cpu-set:
+  #       cpu: [0]
+  #   - receive-cpu-set:
+  #       cpu: [1, 2]
+  #   - worker-cpu-set:
+  #       cpu: [3, 4, 5, 6, 7]
+
+# Auto-tune thread count
+detect-engine:
+  profile: high
+  custom-values:
+    toclient-groups: 3
+    toserver-groups: 3
+  sgh-mpm-context: auto
+  inspection-recursion-limit: 3000
+
+# Pattern matcher
+mpm-algo: auto
+
+# ------------------------------------------------------------------------------
+# Network Interface Configuration
+# ------------------------------------------------------------------------------
+af-packet:
+  - interface: eth0
+    # Threads per interface
+    threads: auto
+    # Cluster settings for multi-threaded load balancing
+    cluster-id: 99
+    cluster-type: cluster_flow
+    defrag: yes
+    # Buffer sizes
+    buffer-size: 67108864
+    block-size: 1048576
+    block-timeout: 100
+    # BPF filter (optional)
+    # bpf-filter: "tcp port 80 or tcp port 443"
+    # Promiscuous mode
+    promisc: yes
+    # Hardware checksum offloading
+    checksum-checks: auto
+    # Ring size
+    ring-size: 200000
+    # XDP mode (Linux 4.18+)
+    # use-mmap: yes
+    # xdp-mode: driver
+
+  # Additional interfaces (uncomment and configure)
+  # - interface: eth1
+  #   threads: auto
+  #   cluster-id: 98
+  #   cluster-type: cluster_flow
+  #   defrag: yes
+
+# ------------------------------------------------------------------------------
+# Protocol Configuration
+# ------------------------------------------------------------------------------
+# IP fragmentation
+defrag:
+  memcap: 64mb
+  hash-size: 65536
+  trackers: 65535
+  max-frags: 65535
+  prealloc: yes
+  timeout: 60
+
+# TCP stream reassembly
+stream:
+  memcap: 256mb
+  checksum-validation: yes
+  inline: auto
+  reassembly:
+    memcap: 128mb
+    depth: 1mb
+    toserver-chunk-size: 256k
+    toclient-chunk-size: 256k
+    randomize-chunk-size: yes
+    raw: yes
+    segment-prealloc: 256
+
+# Host tracking
+host:
+  hash-size: 4096
+  prealloc: 1000
+  memcap: 32mb
+
+# Flow tracking
+flow:
+  memcap: 128mb
+  hash-size: 65536
+  prealloc: 10000
+  emergency-recovery: 30
+
+# ------------------------------------------------------------------------------
+# Application Layer Parsers
+# ------------------------------------------------------------------------------
+app-layer:
+  protocols:
+    # HTTP/1.x and HTTP/2
+    http:
+      enabled: yes
+      memcap: 64mb
+      libhtp:
+        default-config:
+          personality: IDS
+          request-body-limit: 100kb
+          response-body-limit: 100kb
+          request-body-minimal-inspect-size: 32kb
+          response-body-minimal-inspect-size: 32kb
+          request-body-inspect-window: 4kb
+          response-body-inspect-window: 4kb
+          double-decode-path: yes
+          double-decode-query: yes
+      # Request/response body inspection
+      request-body-minimal-inspect-size: 32kb
+      response-body-minimal-inspect-size: 32kb
+      request-body-inspect-window: 4kb
+      response-body-inspect-window: 4kb
+      # File extraction
+      file-extraction:
+        enabled: yes
+        force-hash: [md5, sha256]
+        max-file-size: 100mb
+        force-magic: no
+        # Types to extract
+        types:
+          - application/pdf
+          - application/x-executable
+          - application/x-msdownload
+          - application/x-shockwave-flash
+          - application/x-msdos-program
+          - application/x-sh
+          - application/x-perl
+          - application/x-python
+          - application/zip
+          - application/x-rar
+          - application/x-tar
+          - application/gzip
+          - image/jpeg
+          - image/png
+          - image/gif
+          - application/msword
+          - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+          - application/vnd.ms-excel
+          - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+    # DNS
+    dns:
+      enabled: yes
+      memcap: 32mb
+      request-flood: 500
+      request-flood-interval: 10
+
+    # TLS/SSL
+    tls:
+      enabled: yes
+      memcap: 32mb
+      encrypt-handling: bypass
+      capture-certificates: yes
+      fingerprint-algorithms: [sha256, sha1]
+
+    # SSH
+    ssh:
+      enabled: yes
+      memcap: 32mb
+
+    # SMTP
+    smtp:
+      enabled: yes
+      memcap: 32mb
+      raw-extraction: yes
+      file-extraction: yes
+
+    # IMAP
+    imap:
+      enabled: yes
+      memcap: 32mb
+
+    # POP3
+    pop3:
+      enabled: yes
+      memcap: 32mb
+
+    # Modbus
+    modbus:
+      enabled: yes
+      memcap: 32mb
+
+    # DNP3
+    dnp3:
+      enabled: yes
+      memcap: 32mb
+
+    # ENIP
+    enip:
+      enabled: yes
+      memcap: 32mb
+
+    # MQTT
+    mqtt:
+      enabled: yes
+      memcap: 32mb
+
+    # IEC 104
+    iec104:
+      enabled: yes
+      memcap: 32mb
+
+    # KRB5
+    krb5:
+      enabled: yes
+      memcap: 32mb
+
+    # NFS
+    nfs:
+      enabled: yes
+      memcap: 32mb
+
+    # RDP
+    rdp:
+      enabled: yes
+      memcap: 32mb
+
+    # SNMP
+    snmp:
+      enabled: yes
+      memcap: 32mb
+
+    # SIP
+    sip:
+      enabled: yes
+      memcap: 32mb
+
+    # TFTP
+    tftp:
+      enabled: yes
+      memcap: 32mb
+
+    # DHCP
+    dhcp:
+      enabled: yes
+      memcap: 32mb
+
+    # NTP
+    ntp:
+      enabled: yes
+      memcap: 32mb
+
+    # RADIUS
+    radius:
+      enabled: yes
+      memcap: 32mb
+
+    # SMB
+    smb:
+      enabled: yes
+      memcap: 32mb
+
+    # FTP
+    ftp:
+      enabled: yes
+      memcap: 32mb
+      file-extraction: yes
+
+    # DCERPC
+    dcerpc:
+      enabled: yes
+      memcap: 32mb
+
+    # NTLM
+    ntlm:
+      enabled: yes
+      memcap: 32mb
+
+    # SSH
+    ssh:
+      enabled: yes
+      memcap: 32mb
+
+    # SSL
+    ssl:
+      enabled: yes
+      memcap: 32mb
+
+    # HTTP2
+    http2:
+      enabled: yes
+      memcap: 32mb
+
+    # QUIC
+    quic:
+      enabled: yes
+      memcap: 32mb
+
+    # Geneve
+    geneve:
+      enabled: yes
+      memcap: 32mb
+
+    # VXLAN
+    vxlan:
+      enabled: yes
+      memcap: 32mb
+
+    # Teredo
+    teredo:
+      enabled: yes
+      memcap: 32mb
+
+    # ERSPAN
+    erspan:
+      enabled: yes
+      memcap: 32mb
+
+    # VXLAN
+    vxlan:
+      enabled: yes
+      memcap: 32mb
+
+# ------------------------------------------------------------------------------
+# File Extraction & Storage
+# ------------------------------------------------------------------------------
+file-store:
+  version: 2
+  enabled: yes
+  log-dir: files
+  force-hash: [md5, sha256]
+  force-filestore: yes
+  # Keep files for 7 days
+  max-age: 7d
+  # Max total size
+  max-space: 10gb
+  # Write to disk immediately
+  force-fsync: no
+
+# ------------------------------------------------------------------------------
+# Lua Scripting (for advanced detection)
+# -lua:
+#   enabled: yes
+#   scripts-dir: /etc/suricata/lua/
+
+# ------------------------------------------------------------------------------
+# NetFlow
+# ------------------------------------------------------------------------------
+netflow:
+  enabled: no
+
+# ------------------------------------------------------------------------------
+# Unix Command Socket (for live control)
+# ------------------------------------------------------------------------------
+unix-command:
+  enabled: yes
+  filename: /var/run/suricata/suricata-command.socket
+
+# ------------------------------------------------------------------------------
+# Magic File (for file type detection)
+# ------------------------------------------------------------------------------
+magic-file: /etc/suricata/magic
+
+# ------------------------------------------------------------------------------
+# GeoIP Database
+# ------------------------------------------------------------------------------
+geoip-database: /etc/suricata/GeoLite2-City.mmdb
+
+# ------------------------------------------------------------------------------
+# Reputation
+# ------------------------------------------------------------------------------
+reputation:
+  enabled: no
+
+# ------------------------------------------------------------------------------
+# Profiling
+# ------------------------------------------------------------------------------
+profiling:
+  rules:
+    enabled: yes
+    filename: rule_perf.log
+    append: yes
+    sort: ticks
+    limit: 100
+    json: yes
+
+  keywords:
+    enabled: yes
+    filename: keyword_perf.log
+    append: yes
+
+  prefilter:
+    enabled: yes
+    filename: prefilter_perf.log
+    append: yes
+
+# ------------------------------------------------------------------------------
+# Coredump
+# ------------------------------------------------------------------------------
+coredump:
+  max-dump: unlimited
+
+# ------------------------------------------------------------------------------
+# Include Additional Configs
+# ------------------------------------------------------------------------------
+# Network definitions (overrides vars above)
+!include networks.yaml
+
+# Thresholds
+!include thresholds.yaml
+
+# ------------------------------------------------------------------------------
+# End of Configuration
+# ------------------------------------------------------------------------------
+...

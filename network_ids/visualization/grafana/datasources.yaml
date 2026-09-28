@@ -1,0 +1,64 @@
+# Grafana Datasources Configuration
+# ============================================================
+# Auto-provisioning datasources for NIDS visualization
+# ============================================================
+
+apiVersion: 1
+
+datasources:
+  # Prometheus - Metrics
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: "15s"
+      queryTimeout: "60s"
+      httpMethod: "POST"
+
+  # Elasticsearch - Suricata/Snort Logs
+  - name: Elasticsearch
+    type: elasticsearch
+    access: proxy
+    url: http://elasticsearch:9200
+    database: "suricata-*"
+    isDefault: false
+    editable: false
+    jsonData:
+      interval: "Daily"
+      timeField: "@timestamp"
+      esVersion: 80
+      maxConcurrentShardRequests: 5
+      logMessageField: "message"
+      logLevelField: "level"
+
+  # Loki - Alert Manager Logs
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: false
+    editable: false
+    jsonData:
+      derivedFields:
+        - name: "alert_hash"
+          matcherRegex: "alert_hash=([a-f0-9]+)"
+          url: "https://rules.emergingthreats.net/open/suricata/${__value.raw}"
+
+  # Tempo - Distributed Tracing (if using)
+  # - name: Tempo
+  #   type: tempo
+  #   access: proxy
+  #   url: http://tempo:3200
+  #   isDefault: false
+  #   editable: false
+  #   jsonData:
+  #   tracesToLogs:
+  #     datasourceUid: "loki"
+  #     tags: ["job", "instance", "pod", "namespace"]
+  #     spanStartTimeShift: "1h"
+  #     spanEndTimeShift: "1h"
+  #     filterByTraceID: true
+  #     filterBySpanID: true
