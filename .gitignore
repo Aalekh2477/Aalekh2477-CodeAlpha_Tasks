@@ -1,0 +1,98 @@
+# ============================================
+# CodeAlpha Cybersecurity Internship — .gitignore
+# ============================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+*.egg-info/
+dist/
+build/
+*.egg
+
+# --- Databases / Local Data ---
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# --- PCAP / Capture Files (large) ---
+*.pcap
+*.pcapng
+*.cap
+!03_network_packet_analyzer/sample_packets.pcap  # Keep sample
+
+# --- Logs ---
+*.log
+logs/
+*.out
+
+# --- OS / Editor ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# --- Docker ---
+docker-compose.override.yml
+.docker/
+
+# --- Environment / Secrets ---
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# --- IDE / OS specific ---
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# --- Task-specific ---
+# Task 1: Security Audit
+01_security_code_audit/app.db
+01_security_code_audit/app_secure.db
+01_security_code_audit/__pycache__/
+
+# Task 3: Packet Analyzer
+03_network_packet_analyzer/*.pcap
+03_network_packet_analyzer/__pycache__/
+!03_network_packet_analyzer/sample_packets.pcap
+
+# Task 4: NIDS
+04_network_ids/suricata/logs/
+04_network_ids/snort/logs/
+04_network_ids/alerting/logs/
+04_network_ids/visualization/grafana/data/
+04_network_ids/visualization/elk/data/
+04_network_ids/.env
