@@ -1,147 +1,44 @@
 version: '3.8'
 
 services:
-  # ============================================================
-  # SURICATA - Primary IDS Engine
-  # ============================================================
   suricata:
     image: jasonish/suricata:latest
     container_name: nids-suricata
-    network_mode: host
+    network_mode: "host"
     cap_add:
       - NET_ADMIN
       - NET_RAW
       - SYS_NICE
-      - CAP_DAC_OVERRIDE
     volumes:
-      - ./suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
+      - ./suricata/config/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - ./suricata/rules:/etc/suricata/rules:ro
       - ./suricata/logs:/var/log/suricata
-      - ./config/networks.yaml:/etc/suricata/networks.yaml:ro
-      - ./config/thresholds.yaml:/etc/suricata/thresholds.yaml:ro
-    command: >
-      -c /etc/suricata/suricata.yaml
-      -i eth0
-      --user suricata
-      --group suricata
+    command: -i eth0 --user suricata --group suricata
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "suricata", "--build-info"]
       interval: 30s
       timeout: 10s
       retries: 3
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
-  # ============================================================
-  # SNORT - Secondary IDS Engine (Optional)
-  # ============================================================
-  snort:
-    image: lscr.io/linuxserver/snort:latest
-    container_name: nids-snort
-    network_mode: host
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    volumes:
-      - ./snort/snort.conf:/etc/snort/snort.conf:ro
-      - ./snort/rules:/etc/snort/rules:ro
-      - ./snort/logs:/var/log/snort
-    environment:
-      - INTERFACE=eth0
-      - HOME_NET=192.168.1.0/24
-    restart: unless-stopped
-    profiles:
-      - with-snort
-
-  # ============================================================
-  # ALERT MANAGER - Central Alert Processing
-  # ============================================================
-  alert-manager:
-    build:
-      context: ./alerting
-      dockerfile: Dockerfile
-    container_name: nids-alert-manager
-    volumes:
-      - ./alerting/config.yaml:/app/config.yaml:ro
-      - ./alerting/responders:/app/responders:ro
-      - ./config/whitelist.yaml:/app/whitelist.yaml:ro
-      - ./config/thresholds.yaml:/app/thresholds.yaml:ro
-      - ./suricata/logs:/var/log/suricata:ro
-      - ./snort/logs:/var/log/snort:ro
-      - ./alerting/logs:/var/log/nids
-    environment:
-      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
-      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
-      - WEBHOOK_TOKEN=${WEBHOOK_TOKEN}
-    restart: unless-stopped
-    depends_on:
-      - suricata
-
-  # ============================================================
-  # FILEBEAT - Log Shipping to ELK
-  # ============================================================
-  filebeat:
-    image: docker.elastic.co/beats/filebeat:8.11.0
-    container_name: nids-filebeat
-    user: root
-    volumes:
-      - ./visualization/elk/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-      - ./suricata/logs:/var/log/suricata:ro
-      - ./snort/logs:/var/log/snort:ro
-      - ./alerting/logs:/var/log/nids:ro
-    restart: unless-stopped
-    depends_on:
-      - elasticsearch
-      - logstash
-
-  # ============================================================
-  # LOGSTASH - Log Processing
-  # ============================================================
-  logstash:
-    image: docker.elastic.co/logstash/logstash:8.11.0
-    container_name: nids-logstash
-    volumes:
-      - ./visualization/elk/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
-    ports:
-      - "5044:5044"
-      - "9600:9600"
-    environment:
-      - LS_JAVA_OPTS=-Xmx1g -Xms1g
-    restart: unless-stopped
-    depends_on:
-      - elasticsearch
-
-  # ============================================================
-  # ELASTICSEARCH - Log Storage
-  # ============================================================
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
     container_name: nids-elasticsearch
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xmx2g -Xms2g"
+      - "ES_JAVA_OPTS=-Xmx1g -Xms1g"
     volumes:
       - elasticsearch-data:/usr/share/elasticsearch/data
     ports:
       - "9200:9200"
       - "9300:9300"
-    restart: unless-stopped
     ulimits:
       memlock:
         soft: -1
         hard: -1
-      nofile:
-        soft: 65536
-        hard: 65536
+    restart: unless-stopped
 
-  # ============================================================
-  # KIBANA - Log Visualization
-  # ============================================================
   kibana:
     image: docker.elastic.co/kibana/kibana:8.11.0
     container_name: nids-kibana
@@ -150,103 +47,21 @@ services:
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - XPACK_SECURITY_ENABLED=false
-    restart: unless-stopped
     depends_on:
       - elasticsearch
-
-  # ============================================================
-  # PROMETHEUS - Metrics Collection
-  # ============================================================
-  prometheus:
-    image: prom/prometheus:v2.48.0
-    container_name: nids-prometheus
-    volumes:
-      - ./visualization/grafana/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus-data:/prometheus
-    ports:
-      - "9090:9090"
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.enable-lifecycle'
     restart: unless-stopped
 
-  # ============================================================
-  # GRAFANA - Dashboards & Visualization
-  # ============================================================
-  grafana:
-    image: grafana/grafana:10.2.0
-    container_name: nids-grafana
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    container_name: nids-filebeat
+    user: root
     volumes:
-      - ./visualization/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./visualization/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
-      - grafana-data:/var/lib/grafana
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
-    restart: unless-stopped
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./suricata/logs:/var/log/suricata:ro
     depends_on:
-      - prometheus
       - elasticsearch
-
-  # ============================================================
-  # NODE EXPORTER - Host Metrics
-  # ============================================================
-  node-exporter:
-    image: prom/node-exporter:v1.7.0
-    container_name: nids-node-exporter
-    network_mode: host
-    pid: host
-    volumes:
-      - /:/host:ro,rslave
-    command:
-      - '--path.rootfs=/host'
+      - kibana
     restart: unless-stopped
-    profiles:
-      - monitoring
-
-  # ============================================================
-  # CADVISOR - Container Metrics
-  # ============================================================
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.0
-    container_name: nids-cadvisor
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
-    ports:
-      - "8080:8080"
-    restart: unless-stopped
-    profiles:
-      - monitoring
-
-  # ============================================================
-  # WATCHTOWER - Auto-update
-  # ============================================================
-  watchtower:
-    image: containrrr/watchtower:latest
-    container_name: nids-watchtower
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - WATCHTOWER_CLEANUP=true
-      - WATCHTOWER_SCHEDULE=0 0 4 * * *
-    restart: unless-stopped
-    profiles:
-      - auto-update
 
 volumes:
   elasticsearch-data:
-  prometheus-data:
-  grafana-data:
-
-networks:
-  default:
-    name: nids-network

@@ -1,0 +1,123 @@
+%YAML 1.1
+---
+vars:
+  address-groups:
+    HOME_NET: "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]"
+    EXTERNAL_NET: "!$HOME_NET"
+  port-groups:
+    HTTP_PORTS: "80,81,311,3128,8000,8080,8081,8082,8085,8088,8090,8888,9000,9080,9090,9091,9443"
+    SHELLCODE_PORTS: "!80"
+    ORACLE_PORTS: 1521
+    SSH_PORTS: 22
+    DNP3_PORTS: 20000
+    MODBUS_PORTS: 502
+    FTP_PORTS: 21
+    DNS_PORTS: 53
+    SMTP_PORTS: "25,465,587"
+    SQL_PORTS: "1433,1521,3306,5432,6379,27017"
+
+default-log-dir: /var/log/suricata
+
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert:
+            payload: yes
+            payload-buffer-size: 4kb
+            payload-printable: yes
+            packet: yes
+            metadata: yes
+            tagged-packets: yes
+        - http:
+            extended: yes
+            custom: [Accept, Authorization, Cookie, Referer, User-Agent, X-Forwarded-For]
+        - dns:
+            query: yes
+            answer: yes
+        - tls:
+            extended: yes
+        - ssh:
+            extended: yes
+        - stats:
+            totals: yes
+            threads: yes
+        - flow:
+            enabled: yes
+            all: yes
+
+  - unified2-alert:
+      enabled: yes
+      filename: unified2.alert
+      limit: 128
+
+  - stats:
+      enabled: yes
+      filename: stats.log
+      interval: 60
+      append: yes
+
+  - fast:
+      enabled: yes
+      filename: fast.log
+      append: yes
+
+default-rule-path: /etc/suricata/rules
+rule-files:
+  - suricata.rules
+  - local.rules
+
+classification-file: /etc/suricata/classification.config
+reference-config-file: /etc/suricata/reference.config
+
+af-packet:
+  - interface: eth0
+    cluster-id: 99
+    cluster-type: cluster_flow
+    defrag: yes
+    use-mmap: yes
+    tpacket-v3: yes
+    ring-size: 200000
+    block-size: 32768
+    block-timeout: 10
+
+stream:
+  memcap: 64mb
+  checksum-validation: yes
+  inline: no
+  reassembly:
+    memcap: 256mb
+    depth: 1mb
+    toserver-chunk-size: 2560
+    toclient-chunk-size: 2560
+    randomize-chunk-size: yes
+
+host:
+  hash-size: 4096
+  prealloc: 1000
+  memcap: 32mb
+
+logging:
+  default-log-level: info
+  default-output-filter:
+  outputs:
+    - console:
+        enabled: yes
+    - file:
+        enabled: yes
+        level: info
+        filename: /var/log/suricata/suricata.log
+
+engine:
+  cpu-affinity:
+    management-cpu-set:
+      cpu: [0]
+    receive-cpu-set:
+      cpu: [1]
+    worker-cpu-set:
+      cpu: [2,3,4,5,6,7]
+
+  rule-reload: true
+  rule-reload-interval: 300

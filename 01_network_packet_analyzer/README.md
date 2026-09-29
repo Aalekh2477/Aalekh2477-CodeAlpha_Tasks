@@ -1,4 +1,4 @@
-# Task 03 — Network Packet Analyzer
+# Task 01 — Network Packet Analyzer
 
 > **CodeAlpha Cybersecurity Internship** | Network Security & Traffic Analysis  
 > **Difficulty:** ⭐⭐⭐ Intermediate | **Estimated Time:** 6–8 hours
@@ -14,7 +14,7 @@ Build a **production-grade network packet analyzer** in Python using **Scapy** �
 ## 📂 Folder Structure
 
 ```
-03_network_packet_analyzer/
+01_network_packet_analyzer/
 ├── packet_analyzer.py          # Main analyzer class + CLI (full-featured)
 ├── simple_capture.py           # Beginner-friendly minimal capture script
 ├── demo_analysis.py            # PCAP analysis example script
@@ -34,7 +34,7 @@ Build a **production-grade network packet analyzer** in Python using **Scapy** �
 
 ### Installation
 ```bash
-cd 03_network_packet_analyzer
+cd 01_network_packet_analyzer
 pip install -r requirements.txt
 # Or manually: pip install scapy
 ```
@@ -280,7 +280,7 @@ class PacketAnalyzer:
 
 | Issue | Solution |
 |-------|----------|
-| **Permission Denied** | Linux/macOS: `sudo` | Windows: Run PowerShell/CMD as **Administrator** |
+| **Permission Denied** | Linux/macOS: `sudo` \| Windows: Run PowerShell/CMD as **Administrator** |
 | **No Packets Captured** | Check interface with `--list-interfaces`; verify traffic exists; try without filter |
 | **Scapy Import Error** | `pip install --upgrade scapy` |
 | **Windows Npcap Issues** | Install from https://npcap.com/ → check **"Install Npcap in WinPcap API-compatible Mode"** |
@@ -316,4 +316,4 @@ class PacketAnalyzer:
 
 ## 🔗 Navigation
 
-← **Task 02** [`../02_phishing_awareness_module/README.md`](../02_phishing_awareness_module/README.md) | **Master README** [`../README.md`](../README.md) | **Task 04 →** [`../04_network_ids/README.md`](../04_network_ids/README.md)
+← **Master README** [`../README.md`](../README.md) | **Task 02 →** [`../02_phishing_awareness_module/README.md`](../02_phishing_awareness_module/README.md)

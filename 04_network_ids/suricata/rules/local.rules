@@ -1,14 +1,11 @@
-# Suricata Custom Rules for NIDS
-# ============================================================
-# Custom detection rules for common attack patterns
-# SID Range: 1000000-1999999 reserved for local rules
-# ============================================================
+# Custom Suricata Rules for Network Intrusion Detection
+# SID Range: 1000000 - 1999999 (reserved for local rules)
 
-# ------------------------------------------------------------------------------
+# ============================================================
 # Web Application Attacks
-# ------------------------------------------------------------------------------
+# ============================================================
 
-# SQL Injection - Union-based
+# SQL Injection - Union based
 alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
     msg:"WEB-APP SQL Injection Union Select";
     flow:to_server,established;
@@ -17,36 +14,25 @@ alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
     pcre:"/union\s+.*select/i";
     classtype:web-application-attack;
     reference:url,owasp.org/www-community/attacks/SQL_Injection;
-    metadata:created_at 2024-01-15;
-    sid:1000001; rev:2;
+    sid:1000001; rev:1;
 )
 
-# SQL Injection - Error-based
+# SQL Injection - Error based
 alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
     msg:"WEB-APP SQL Injection Error Based";
     flow:to_server,established;
     pcre:"/(mysql|postgresql|oracle|sqlserver|syntax error|unclosed quotation)/i";
     classtype:web-application-attack;
-    reference:url,owasp.org/www-community/attacks/SQL_Injection;
-    sid:1000002; rev:2;
+    sid:1000002; rev:1;
 )
 
-# SQL Injection - Blind/Time-based
+# SQL Injection - Time based
 alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
     msg:"WEB-APP SQL Injection Time Based";
     flow:to_server,established;
     pcre:"/(waitfor\s+delay|sleep\s*\(|benchmark\s*\(|pg_sleep\s*\()/i";
     classtype:web-application-attack;
-    sid:1000003; rev:2;
-)
-
-# SQL Injection - Boolean-based
-alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
-    msg:"WEB-APP SQL Injection Boolean Based";
-    flow:to_server,established;
-    pcre:"/(or\s+1\s*=\s*1|and\s+1\s*=\s*1|or\s+'1'\s*=\s*'1|and\s+'1'\s*=\s*'1)/i";
-    classtype:web-application-attack;
-    sid:1000004; rev:1;
+    sid:1000003; rev:1;
 )
 
 # Command Injection
@@ -57,7 +43,7 @@ alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
     pcre:"/(cat|ls|id|whoami|uname|pwd|wget|curl|nc|bash|sh|python|perl|php)/i";
     classtype:web-application-attack;
     reference:url,owasp.org/www-community/attacks/Command_Injection;
-    sid:1000005; rev:2;
+    sid:1000004; rev:1;
 )
 
 # Path Traversal
@@ -67,10 +53,10 @@ alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
     pcre:"/(\.\.\/|\.\.\\|\%2e\%2e\/|\%2e\%2e\\))/i";
     classtype:web-application-attack;
     reference:url,owasp.org/www-community/attacks/Path_Traversal;
-    sid:1000006; rev:2;
+    sid:1000005; rev:1;
 )
 
-# XSS - Script Tag
+# XSS - Script tag
 alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
     msg:"WEB-APP XSS Script Tag";
     flow:to_server,established;
@@ -78,26 +64,16 @@ alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
     pcre:"/<script[^>]*>.*<\/script>/i";
     classtype:web-application-attack;
     reference:url,owasp.org/www-community/attacks/xss/;
-    sid:1000007; rev:2;
+    sid:1000006; rev:1;
 )
 
-# XSS - Event Handlers
+# XSS - Event handlers
 alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
     msg:"WEB-APP XSS Event Handler";
     flow:to_server,established;
     pcre:"/on(load|error|click|mouseover|focus|blur|change|submit|keydown|keyup|keypress)\s*=/i";
     classtype:web-application-attack;
-    sid:1000008; rev:1;
-)
-
-# XSS - JavaScript Protocol
-alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
-    msg:"WEB-APP XSS JavaScript Protocol";
-    flow:to_server,established;
-    content:"javascript:"; nocase;
-    pcre:"/javascript\s*:/i";
-    classtype:web-application-attack;
-    sid:1000009; rev:1;
+    sid:1000007; rev:1;
 )
 
 # LDAP Injection
@@ -108,7 +84,7 @@ alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
     content:"ldap"; nocase;
     classtype:web-application-attack;
     reference:url,owasp.org/www-community/attacks/LDAP_Injection;
-    sid:1000010; rev:1;
+    sid:1000008; rev:1;
 )
 
 # XXE Injection
@@ -120,7 +96,7 @@ alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
     content:"SYSTEM"; nocase;
     classtype:web-application-attack;
     reference:url,owasp.org/www-community/attacks/XML_External_Entity_(XXE)_Processing;
-    sid:1000011; rev:1;
+    sid:1000009; rev:1;
 )
 
 # SSRF Attempt
@@ -130,12 +106,12 @@ alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
     pcre:"/(http|https|ftp|gopher|dict|file|ldap)\s*:\s*\/\/(localhost|127\.0\.0\.1|169\.254\.169\.254|metadata\.google\.internal|metadata\.azure\.com|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+|192\.168\.\d+\.\d+)/i";
     classtype:web-application-attack;
     reference:url,owasp.org/www-community/attacks/Server_Side_Request_Forgery;
-    sid:1000012; rev:2;
+    sid:1000010; rev:1;
 )
 
-# ------------------------------------------------------------------------------
+# ============================================================
 # Authentication Attacks
-# ------------------------------------------------------------------------------
+# ============================================================
 
 # Brute Force - SSH
 alert ssh $EXTERNAL_NET any -> $HOME_NET $SSH_PORTS (
@@ -146,7 +122,7 @@ alert ssh $EXTERNAL_NET any -> $HOME_NET $SSH_PORTS (
     threshold: type both, track by_src, count 5, seconds 300;
     classtype:attempted-admin;
     reference:url,owasp.org/www-community/attacks/Brute_force;
-    sid:1000101; rev:2;
+    sid:1000101; rev:1;
 )
 
 # Brute Force - FTP
@@ -172,33 +148,11 @@ alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
     sid:1000103; rev:1;
 )
 
-# Brute Force - RDP
-alert tcp $EXTERNAL_NET any -> $HOME_NET 3389 (
-    msg:"BRUTE-FORCE RDP Login Attempt";
-    flow:to_server,established;
-    content:"|03 00 00 0b 06 d0 00 00 12 34 00|";
-    threshold: type both, track by_src, count 10, seconds 300;
-    classtype:attempted-admin;
-    sid:1000104; rev:1;
-)
-
-# Credential Stuffing - Multiple Users
-alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
-    msg:"CREDENTIAL-STUFFING Multiple Usernames";
-    flow:to_server,established;
-    http.uri; content:"/login"; nocase;
-    http.header_name: "Content-Type";
-    content:"application/x-www-form-urlencoded";
-    threshold: type both, track by_src, count 20, seconds 300;
-    classtype:attempted-admin;
-    sid:1000105; rev:1;
-)
-
-# ------------------------------------------------------------------------------
+# ============================================================
 # Malware & C2 Communications
-# ------------------------------------------------------------------------------
+# ============================================================
 
-# C2 Beaconing - Regular Intervals
+# C2 Beaconing - Regular intervals
 alert http $HOME_NET any -> $EXTERNAL_NET any (
     msg:"MALWARE C2 HTTP Beaconing";
     flow:to_server,established;
@@ -206,7 +160,7 @@ alert http $HOME_NET any -> $EXTERNAL_NET any (
     threshold: type both, track by_src, count 20, seconds 300;
     classtype:trojan-activity;
     reference:url,attack.mitre.org/techniques/T1071/001/;
-    sid:1000201; rev:2;
+    sid:1000201; rev:1;
 )
 
 # DNS Tunneling
@@ -218,7 +172,7 @@ alert dns $HOME_NET any -> $EXTERNAL_NET any (
     threshold: type both, track by_src, count 50, seconds 300;
     classtype:trojan-activity;
     reference:url,attack.mitre.org/techniques/T1071/004/;
-    sid:1000202; rev:2;
+    sid:1000202; rev:1;
 )
 
 # Suspicious User Agent
@@ -228,30 +182,12 @@ alert http $HOME_NET any -> $EXTERNAL_NET any (
     http.user_agent;
     pcre:"/(python|perl|curl|wget|nmap|masscan|zmap|nikto|sqlmap|hydra|medusa|metasploit|msf|empire|koadic|poshc2|cobaltstrike|beacon|implant|rat|trojan|botnet|miner|xmrig)/i";
     classtype:trojan-activity;
-    sid:1000203; rev:3;
+    sid:1000203; rev:1;
 )
 
-# Known C2 Domains (updated from ThreatFox)
-# These rules are auto-generated from threatfox/*.rules
-# Example:
-# alert dns $HOME_NET any -> $EXTERNAL_NET any (
-#     msg:"MALWARE Known C2 Domain";
-#     dns.query; content:"evilc2.com";
-#     classtype:trojan-activity;
-#     sid:1000204; rev:1;
-# )
-
-# Known C2 IPs
-# alert ip $HOME_NET any -> $EXTERNAL_NET any (
-#     msg:"MALWARE Known C2 IP";
-#     ip.dst; content:"1.2.3.4";
-#     classtype:trojan-activity;
-#     sid:1000205; rev:1;
-# )
-
-# ------------------------------------------------------------------------------
+# ============================================================
 # Reconnaissance & Scanning
-# ------------------------------------------------------------------------------
+# ============================================================
 
 # Port Scan - SYN Scan
 alert tcp $EXTERNAL_NET any -> $HOME_NET any (
@@ -259,7 +195,7 @@ alert tcp $EXTERNAL_NET any -> $HOME_NET any (
     flags:S;
     threshold: type both, track by_src, count 50, seconds 60;
     classtype:attempted-recon;
-    sid:1000301; rev:2;
+    sid:1000301; rev:1;
 )
 
 # Port Scan - FIN Scan
@@ -297,17 +233,6 @@ alert udp $EXTERNAL_NET any -> $HOME_NET any (
     sid:1000305; rev:1;
 )
 
-# Version Scan
-alert tcp $EXTERNAL_NET any -> $HOME_NET any (
-    msg:"SCAN Version Detection";
-    flags:SA;
-    content:"SSH-"; nocase;
-    content:"OpenSSH"; nocase; distance:0; within:20;
-    threshold: type both, track by_src, count 20, seconds 60;
-    classtype:attempted-recon;
-    sid:1000306; rev:1;
-)
-
 # Network Sweep
 alert icmp $EXTERNAL_NET any -> $HOME_NET any (
     msg:"SCAN ICMP Ping Sweep";
@@ -315,12 +240,12 @@ alert icmp $EXTERNAL_NET any -> $HOME_NET any (
     icmp_code: 0;
     threshold: type both, track by_src, count 20, seconds 60;
     classtype:attempted-recon;
-    sid:1000307; rev:1;
+    sid:1000306; rev:1;
 )
 
-# ------------------------------------------------------------------------------
+# ============================================================
 # Exploit Attempts
-# ------------------------------------------------------------------------------
+# ============================================================
 
 # Log4Shell (CVE-2021-44228)
 alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
@@ -329,7 +254,7 @@ alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
     pcre:"/\$\{(jndi|ldap|rmi|dns|iiop):/i";
     classtype:attempted-admin;
     reference:cve,2021-44228;
-    sid:1000401; rev:3;
+    sid:1000401; rev:1;
 )
 
 # Spring4Shell (CVE-2022-22965)
@@ -340,7 +265,7 @@ alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
     pcre:"/class\.module\.classLoader\.resources\.context\.parent\.pipeline/i";
     classtype:attempted-admin;
     reference:cve,2022-22965;
-    sid:1000402; rev:2;
+    sid:1000402; rev:1;
 )
 
 # ProxyLogon (CVE-2021-26855)
@@ -352,7 +277,7 @@ alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (
     http.header_name: "X-AnonResource-Backend"; nocase;
     classtype:attempted-admin;
     reference:cve,2021-26855;
-    sid:1000403; rev:2;
+    sid:1000403; rev:1;
 )
 
 # EternalBlue (MS17-010)
@@ -363,7 +288,7 @@ alert tcp $EXTERNAL_NET any -> $HOME_NET 445 (
     content:"|00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00|"; distance:0; within:16;
     classtype:attempted-admin;
     reference:cve,2017-0144;
-    sid:1000404; rev:2;
+    sid:1000404; rev:1;
 )
 
 # BlueKeep (CVE-2019-0708)
@@ -376,9 +301,9 @@ alert tcp $EXTERNAL_NET any -> $HOME_NET 3389 (
     sid:1000405; rev:1;
 )
 
-# ------------------------------------------------------------------------------
+# ============================================================
 # Data Exfiltration
-# ------------------------------------------------------------------------------
+# ============================================================
 
 # Large Data Transfer
 alert http $HOME_NET any -> $EXTERNAL_NET any (
@@ -411,9 +336,9 @@ alert ftp $HOME_NET any -> $EXTERNAL_NET any (
     sid:1000503; rev:1;
 )
 
-# ------------------------------------------------------------------------------
+# ============================================================
 # Policy Violations
-# ------------------------------------------------------------------------------
+# ============================================================
 
 # Tor Traffic
 alert tcp $HOME_NET any -> $EXTERNAL_NET any (
@@ -436,7 +361,7 @@ alert http $HOME_NET any -> $EXTERNAL_NET any (
     http.uri; content:"/worker/"; nocase;
     pcre:"/stratum\+tcp|stratum\+ssl|xmrig|minergate|nicehash|coinmine|cryptonight|ethash|equihash/i";
     classtype:policy-violation;
-    sid:1000602; rev:2;
+    sid:1000602; rev:1;
 )
 
 # Peer-to-Peer Traffic
@@ -455,12 +380,12 @@ alert http $HOME_NET any -> $EXTERNAL_NET any (
     http.host; content:"dropbox.com|drive.google.com|onedrive.live.com|box.com|mega.nz|wetransfer.com|file.io|sendspace.com|mediafire.com|4shared.com|zippyshare.com"; nocase;
     http.method; content:"POST|PUT";
     classtype:policy-violation;
-    sid:1000604; rev:2;
+    sid:1000604; rev:1;
 )
 
-# ------------------------------------------------------------------------------
+# ============================================================
 # IoT/OT Specific
-# ------------------------------------------------------------------------------
+# ============================================================
 
 # Modbus Unauthorized Function
 alert modbus $EXTERNAL_NET any -> $HOME_NET any (
@@ -486,19 +411,3 @@ alert dnp3 $EXTERNAL_NET any -> $HOME_NET any (
     classtype:attempted-admin;
     sid:1000703; rev:1;
 )
-
-# ------------------------------------------------------------------------------
-# End of Custom Rules
-# ============================================================
-# Rule Writing Guidelines:
-# 1. Use SID range 1000000-1999999 for local rules
-# 2. Always include classtype, reference, and metadata
-# 3. Test rules with: suricata -T -c suricata.yaml -v
-# 4. Use threshold for rate limiting
-# 5. Use flow:to_server,established for server-side attacks
-# 6. Use flow:to_client,established for client-side attacks
-# 7. Use flow:established for bidirectional
-# 8. Optimize pcre with content matches first
-# 9. Use fast_pattern for content matches
-# 10. Document rule purpose and references
-# ============================================================

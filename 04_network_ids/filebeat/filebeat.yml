@@ -1,0 +1,103 @@
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/suricata/eve.json
+    fields:
+      source: suricata
+      log_type: eve
+    fields_under_root: true
+    json:
+      keys_under_root: true
+      overwrite_keys: true
+      add_error_key: true
+    ignore_older: 24h
+    close_inactive: 5m
+    close_removed: true
+    clean_inactive: 24h
+
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/suricata/fast.log
+    fields:
+      source: suricata
+      log_type: fast
+    fields_under_root: true
+    tags: ["suricata", "fast"]
+
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/suricata/stats.log
+    fields:
+      source: suricata
+      log_type: stats
+    fields_under_root: true
+    tags: ["suricata", "stats"]
+
+processors:
+  - add_host_metadata:
+      netinfo.enabled: true
+      geo.enabled: false
+
+  - add_docker_metadata:
+      host: "unix:///var/run/docker.sock"
+      match_fields: ["container.id"]
+      match_pids: ["process.pid"]
+
+  - add_kubernetes_metadata:
+      host: ${NODE_NAME}
+      matchers:
+        - logs_path:
+            logs_path: "/var/log/containers/"
+
+  - drop_event:
+      when:
+        regexp:
+          level: "debug"
+
+  - add_fields:
+      target: ""
+      fields:
+        environment: "production"
+        sensor_type: "nids"
+      when:
+        not:
+          equals:
+            source: "test"
+
+output.logstash:
+  hosts: ["elasticsearch:9200"]
+  loadbalance: true
+  pipelining: 0
+  worker: 2
+  compression_level: 3
+  bulk_max_size: 2048
+  timeout: 30
+  backoff: 1s
+  backoff.max: 60s
+
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644
+
+monitoring.enabled: true
+monitoring.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+
+http.enabled: true
+http.host: 0.0.0.0
+http.port: 5066
+
+queue.mem:
+  events: 4096
+  flush.min_events: 512
+  flush.timeout: 5s
+
+retry_limit: 10
+retry_timeout: 60s
